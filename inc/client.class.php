@@ -24,7 +24,7 @@ class Client {
     private static $config = null;
 
     static function init() {
-        self::$config = json_decode(file_get_contents(SITE_ROOT . '/config/client.json'), true);
+        self::$config = json_decode(file_get_contents('../config/client.json'), true);
     }
 
     private static function _showDashboardHostAlerts() {
@@ -50,7 +50,7 @@ class Client {
         echo "<h3>" . NagiosServer::countServices() . " Services</h3>";
         echo "<ul>";
         if (NagiosServer::countServices(NagiosServer::getNonOKServiceStatusArray()) === 0) {
-            echo "<div><h4 class='ok'>All services OK</h4>";
+            echo "<li class='ok'><h4>All services OK</h4></li>";
         } else {
             $all_services = NagiosServer::getServicesByStatus();
 
@@ -106,10 +106,59 @@ class Client {
         echo "</ul>";
     }
 
+    private static function _showDashboardEvents() {
+        echo "<h3>Historical</h3>";
+        $eventlist = NagiosServer::getEvents();
+
+        echo "<ul>";
+        foreach ($eventlist as $event) {
+            $statetype = 'critical';
+            if ($event['object_type'] === 2) {
+                switch ($event['state']) {
+                    case NagiosServer::SERVICE_OK:
+                    case NagiosServer::SERVICE_UNKNOWN:
+                        $statetype = 'ok';
+                        break;
+                    case NagiosServer::SERVICE_WARNING:
+                        $statetype = 'warn';
+                        break;
+                    case NagiosServer::SERVICE_CRITICAL:
+                        $statetype = 'critical';
+                        break;
+                }
+            } else {
+                switch ($event['state']) {
+                    case NagiosServer::HOST_UP:
+                        $statetype = 'ok';
+                        break;
+                    case NagiosServer::HOST_DOWN:
+                        $statetype = 'critical';
+                        break;
+                    case NagiosServer::HOST_UNREACHABLE:
+                        $statetype = 'critical';
+                        break;
+                }
+            }
+
+            $statetype = $statetype . ' no-bg';
+            $timestamp = date(DATE_RFC2822, $event['timestamp']);
+            echo "<li class='neutral'>";
+            if ($event['object_type'] === 2) {
+                echo "<h5>".$event['host_name'] . " - <span class='service-name'>{$event['description']} - </span><span class='{$statetype}'>{$event['plugin_output']}</span><span class='right'>{$timestamp}</span></h5>";
+            } else {
+                echo "<h5>".$event['name'] . " - <span class='{$statetype}'>{$event['plugin_output']}</span></h5>";
+            }
+            echo "</li>";
+        }
+        echo "</ul>";
+    }
+
     static function showDashboard() {
         echo "<div id='nagios-dashboard' class='dashboard'>";
+        echo "<h3>Last refreshed: " . date(DATE_RFC2822) . "</h3>";
         self::_showDashboardHostAlerts();
         self::_showDashboardServiceAlerts();
+        self::_showDashboardEvents();
         echo "</div>";
     }
 }

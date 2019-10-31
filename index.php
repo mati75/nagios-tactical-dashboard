@@ -20,19 +20,18 @@
  --------------------------------------------------------------------------
  */
 
-define('SITE_ROOT', __DIR__);
-
-include('inc/nagiosserver.class.php');
-include('inc/client.class.php');
+include("inc/includes.php");
 
 echo "<html lang='en_US'>";
 echo "<head>";
 echo "<title>Nagios Tactical Dashboard</title>";
 echo "<link rel='stylesheet' href='css/dashboard.css'>";
+echo "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js'></script>";
+echo "<script src='js/dashboard.js'></script>";
 echo "</head><body>";
 
-NagiosServer::init();
-Client::init();
-Client::showDashboard();
+//NagiosServer::init();
+//Client::init();
+//Client::showDashboard();
 
 echo "</body></html>";

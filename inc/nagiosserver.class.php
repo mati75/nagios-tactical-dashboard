@@ -35,7 +35,7 @@ class NagiosServer {
     const HOST_UNREACHABLE  = 8;
 
     static function init() {
-        self::$config = json_decode(file_get_contents(SITE_ROOT . '/config/server.json'), true);
+        self::$config = json_decode(file_get_contents('../config/server.json'), true);
     }
 
     static function getNonOKServiceStatusArray() {
@@ -61,12 +61,32 @@ class NagiosServer {
         }
     }
 
+    private static function getCurlResponse($url) {
+        $ch = curl_init($url);
+        self::setCurlAuth($ch);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Accept: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        $response = curl_exec($ch);
+        curl_close($ch);
+        return $response;
+    }
+
     static function getServiceStatusURL($params = []) {
         return self::$config['nagios_url'] . '/cgi-bin/statusjson.cgi?query=servicelist';
     }
 
     static function getHostStatusURL($params = []) {
         return self::$config['nagios_url'] . '/cgi-bin/statusjson.cgi?query=hostlist';
+    }
+
+    static function getEventsURL() {
+        $time = 1 * 24 * 60 * 60;
+        return self::$config['nagios_url'] . "/cgi-bin/archivejson.cgi?query=alertlist&starttime=-{$time}&endtime=%2B0";
     }
 
     static function getServiceList() {
@@ -81,32 +101,16 @@ class NagiosServer {
             }
             return apcu_fetch('servicelist');
         }
-        return self::_getServiceList();
+        return [];
     }
 
     private static function _getServiceList() {
-        $ch = curl_init(self::getServiceStatusURL());
-        self::setCurlAuth($ch);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Accept: application/json'
-        ]);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $response = curl_exec($ch);
-        curl_close($ch);
+        $response = self::getCurlResponse(self::getServiceStatusURL());
         return json_decode($response, true)['data']['servicelist'];
     }
 
     private static function _getNonOKServiceDetails() {
-        $ch = curl_init(self::getServiceStatusURL()."&details=true&servicestatus=unknown+warning+critical");
-        self::setCurlAuth($ch);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Accept: application/json'
-        ]);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $response = curl_exec($ch);
-        curl_close($ch);
+        $response = self::getCurlResponse(self::getServiceStatusURL()."&details=true&servicestatus=unknown+warning+critical");
         return json_decode($response, true)['data']['servicelist'];
     }
 
@@ -122,32 +126,16 @@ class NagiosServer {
             }
             return apcu_fetch('hostlist_brief');
         }
-        return self::_getHostList();
+        return [];
     }
 
     private static function _getHostList() {
-        $ch = curl_init(self::getHostStatusURL());
-        self::setCurlAuth($ch);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Accept: application/json'
-        ]);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $response = curl_exec($ch);
-        curl_close($ch);
+        $response = self::getCurlResponse(self::getHostStatusURL());
         return json_decode($response, true)['data']['hostlist'];
     }
 
     private static function _getNonOKHostDetails() {
-        $ch = curl_init(self::getHostStatusURL()."&details=true&hoststatus=down+unreachable");
-        self::setCurlAuth($ch);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Accept: application/json'
-        ]);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $response = curl_exec($ch);
-        curl_close($ch);
+        $response = self::getCurlResponse(self::getHostStatusURL()."&details=true&hoststatus=down+unreachable");
         return json_decode($response, true)['data']['hostlist'];
     }
 
@@ -229,7 +217,19 @@ class NagiosServer {
         return [];
     }
 
-    static function getEvents($age = 36288000) {
+    static function getEvents() {
+        if (extension_loaded('apcu')) {
+            if (!apcu_exists('eventlist')) {
+                $eventlist = self::_getEvents();
+                apcu_store('eventlist', $eventlist, self::$config['refresh_interval']);
+            }
+            return apcu_fetch('eventlist');
+        }
+        return [];
+    }
 
+    private static function _getEvents() {
+        $response = self::getCurlResponse(self::getEventsURL());
+        return array_reverse(json_decode($response, true)['data']['alertlist']);
     }
 }

@@ -24,18 +24,30 @@ body {
    font-family: 'Bitstream Vera Sans', Verdana, Tahoma, 'Sans serif';
 }
 
+.no-bg {
+   background-color: inherit !important;
+}
+
 h3 {
    color: #f4a024;
    margin-bottom: 5px;
 }
 
-h4 {
+h4, h5 {
    margin-top: 0;
    margin-bottom: 3px;
 }
 
+.right {
+   float: right;
+}
+
 .service-name {
    color: #f4a024;
+}
+
+.neutral {
+   background-color: #1f1f1f;
 }
 
 .ok, .ok h4 {
@@ -97,8 +109,9 @@ h4 {
    padding: 2px 0 2px 5px;
 }
 
-.dashboard ul li h4 {
+.dashboard ul li h4, .dashboard ul li h5 {
    margin-bottom: 0;
+   margin-right: 5px;
    color: white;
 }
 
