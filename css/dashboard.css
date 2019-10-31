@@ -1,0 +1,117 @@
+/*
+ -------------------------------------------------------------------------
+ Nagios Tactical Dashboard
+ Copyright (C) 2019 by Curtis Conard
+ https://github.com/cconard96/nagios-tactical-dashboard
+ -------------------------------------------------------------------------
+ LICENSE
+ This file is part of Nagios Tactical Dashboard.
+ Nagios Tactical Dashboard is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 2 of the License, or
+ (at your option) any later version.
+ Nagios Tactical Dashboard is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ You should have received a copy of the GNU General Public License
+ along with Nagios Tactical Dashboard. If not, see <http://www.gnu.org/licenses/>.
+ --------------------------------------------------------------------------
+ */
+ 
+body {
+   background-color: #0d0d0d;
+   font-family: 'Bitstream Vera Sans', Verdana, Tahoma, 'Sans serif';
+}
+
+h3 {
+   color: #f4a024;
+   margin-bottom: 5px;
+}
+
+h4 {
+   margin-top: 0;
+   margin-bottom: 3px;
+}
+
+.service-name {
+   color: #f4a024;
+}
+
+.ok, .ok h4 {
+   background-color: #d4edda;
+   color: #23903c !important;
+}
+
+.badge-ok {
+   background-color: #23903c;
+   color: #d4edda;
+   font-weight: bold;
+   border-radius: 5px;
+   margin: 3px;
+   padding: 0 3px 0 3px;
+   font-size: 0.7em;
+   float: right;
+}
+
+.warn-ack {
+   background-color: #ededd4;
+   color: #77771d;
+}
+
+.warn {
+   background-color: #888800;
+   color: #ffff00;
+}
+
+.critical-ack {
+   background-color: #eddad4;
+   color: #a74528;
+}
+
+.critical {
+   background-color: #880000;
+   color: #ff8888;
+}
+
+.badge-critical {
+   background-color: #ff8888;
+   color: #880000;
+   font-weight: bold;
+   border-radius: 5px;
+   margin: 3px;
+   padding: 0 3px 0 3px;
+   font-size: 0.7em;
+   float: right;
+}
+
+.dashboard ul {
+   list-style: none;
+   padding: 0;
+   margin-top: 3px;
+}
+
+.dashboard ul li {
+   border-radius: 10px;
+   margin: 5px 5px 0 5px;
+   padding: 2px 0 2px 5px;
+}
+
+.dashboard ul li h4 {
+   margin-bottom: 0;
+   color: white;
+}
+
+.dashboard ul li p {
+   margin-top: 1px;
+   margin-bottom: 0;
+}
+
+/** Fancy animations */
+.slide-fade li {
+   transition: all 0.5s ease-out;
+   opacity: 0;
+}
+.slide-fade li.show {
+   opacity: 1;
+}
