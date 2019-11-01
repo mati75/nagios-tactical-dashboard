@@ -28,6 +28,18 @@ body {
    background-color: inherit !important;
 }
 
+.space-s {
+   margin-left: 3px;
+}
+
+.space-m {
+   margin-left: 6px;
+}
+
+.space-l {
+   margin-left: 9px;
+}
+
 h3 {
    color: #f4a024;
    margin-bottom: 5px;
@@ -51,12 +63,12 @@ h4, h5 {
 }
 
 .ok, .ok h4 {
-   background-color: #d4edda;
-   color: #23903c !important;
+   background-color: #1f1f1f;
+   color: #33fd62 !important;
 }
 
 .badge-ok {
-   background-color: #23903c;
+   background-color: #33fd62;
    color: #d4edda;
    font-weight: bold;
    border-radius: 5px;
@@ -72,17 +84,17 @@ h4, h5 {
 }
 
 .warn {
-   background-color: #888800;
+   background-color: #666600;
    color: #ffff00;
 }
 
 .critical-ack {
-   background-color: #eddad4;
-   color: #a74528;
+   background-color: #854747;
+   color: #ffede7;
 }
 
 .critical {
-   background-color: #880000;
+   background-color: #660000;
    color: #ff8888;
 }
 
@@ -106,7 +118,7 @@ h4, h5 {
 .dashboard ul li {
    border-radius: 10px;
    margin: 5px 5px 0 5px;
-   padding: 2px 0 2px 5px;
+   padding: 4px 0 4px 5px;
 }
 
 .dashboard ul li h4, .dashboard ul li h5 {
@@ -118,6 +130,11 @@ h4, h5 {
 .dashboard ul li p {
    margin-top: 1px;
    margin-bottom: 0;
+}
+
+.dashboard ul li a {
+   color: unset;
+   text-decoration: none;
 }
 
 /** Fancy animations */

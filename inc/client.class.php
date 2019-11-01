@@ -35,10 +35,15 @@ class Client {
         } else {
             $all_hosts = NagiosServer::getHostsByStatus();
 
-            if (isset($all_hosts[NagiosServer::HOST_UP])) {
-                foreach ($all_hosts[NagiosServer::HOST_UP] as $host) {
+            if (isset($all_hosts[NagiosServer::HOST_DOWN])) {
+                foreach ($all_hosts[NagiosServer::HOST_DOWN] as $host) {
                     echo "<li class='critical'><h4>{$host} - Down</h4>";
-                    echo "<p>Extra stuff here</p>";
+                    echo "</li>";
+                }
+            }
+            if (isset($all_hosts[NagiosServer::HOST_UNREACHABLE])) {
+                foreach ($all_hosts[NagiosServer::HOST_UNREACHABLE] as $host) {
+                    echo "<li class='critical'><h4>{$host} - Unreachable</h4>";
                     echo "</li>";
                 }
             }
@@ -47,63 +52,58 @@ class Client {
     }
 
     private static function _showDashboardServiceAlerts() {
-        echo "<h3>" . NagiosServer::countServices() . " Services</h3>";
-        echo "<ul>";
+        $service_header_text = NagiosServer::countServices() . " Services";
+        $service_list = "<ul>";
         if (NagiosServer::countServices(NagiosServer::getNonOKServiceStatusArray()) === 0) {
-            echo "<li class='ok'><h4>All services OK</h4></li>";
+            $service_list .= "<li class='ok'><h4>All services OK</h4></li>";
         } else {
-            $all_services = NagiosServer::getServicesByStatus();
+            $all_services = NagiosServer::getServiceList();
 
-            foreach ($all_services as $host => $statuses) {
-                if (isset($statuses[NagiosServer::SERVICE_CRITICAL])) {
-                    $to_show = [];
-                    foreach ($statuses[NagiosServer::SERVICE_CRITICAL] as $service => $details) {
-                        $to_show[] = $service;
-                    }
-                    if (Client::$config['group_host_services']) {
-                        $service_str = '';
-                        foreach ($to_show as $service) {
-                            $service_str .= $service . ', ';
-                        }
-                        $service_str = rtrim($service_str, ', ');
-                        echo "<li class='critical'><h4>{$host} - <span class='service-name'>{$service_str}</span></h4>";
-                        echo "<p>Extra stuff here</p>";
-                        echo "</li>";
-                    } else {
-                        foreach ($to_show as $service) {
-                            echo "<li class='critical'><h4>{$host} - <span class='service-name'>{$service}</span></h4>";
-                            echo "<p>Extra stuff here</p>";
-                            echo "</li>";
-                        }
-                    }
+            $to_show = [];
+            foreach ($all_services as $host => $services) {
+                foreach ($services as $service => $details) {
+                    $to_show[$host][$details['status']][$service] = $details;
                 }
             }
-            foreach ($all_services as $host => $statuses) {
-                if (isset($statuses[NagiosServer::SERVICE_WARNING])) {
-                    $to_show = [];
-                    foreach ($statuses[NagiosServer::SERVICE_WARNING] as $service) {
-                        $to_show[] = $service;
-                    }
-                    if (Client::$config['group_host_services']) {
-                        $service_str = '';
-                        foreach ($to_show as $service) {
-                            $service_str .= $service . ', ';
+
+            foreach ($to_show as $host => $services) {
+                foreach ($services as $status => $status_services) {
+                    foreach ($status_services as $service => $details) {
+                        $last_check = Toolbox::formatNagiosTimestamp($details['last_check']);
+                        $last_ok = Toolbox::formatNagiosTimestamp($details['last_time_ok']);
+                        $next_check = Toolbox::formatNagiosTimestamp($details['next_check']);
+
+                        $statustype = $status === NagiosServer::SERVICE_WARNING ? 'warn' : 'critical';
+                        if ($details['problem_has_been_acknowledged']) {
+                            $statustype .= '-ack';
                         }
-                        $service_str = rtrim($service_str, ', ');
-                        echo "<li class='warn'><h4>{$host} - <span class='service-name'>{$service_str}</span></h4>";
-                        echo "<p>Extra stuff here</p>";
-                        echo "</li>";
-                    } else {
-                        foreach ($to_show as $service) {
-                            echo "<li class='warn'><h4>{$host} - <span class='service-name'>{$service}</span></h4>";
-                            echo "<p>Extra stuff here</p>";
-                            echo "</li>";
+                        $service_list .= "<li class='$statustype'><h4>{$host} - <span class='service-name'>{$service}</span>";
+                        $service_list .= "<span class='right'>";
+                        if ($details['state_type'] === NagiosServer::STATE_SOFT) {
+                            $service_list .= "<span class='space-m'>Soft</span>";
+                        } else {
+                            $service_list .= "<span class='space-m'>Hard</span>";
                         }
+                        if ($details['is_flapping']) {
+                            $service_list .= "<span class='space-m warn no-bg'>Flapping</span>";
+                        }
+                        if ($details['problem_has_been_acknowledged']) {
+                            $service_list .= "<span class='space-m ok no-bg'>Ack</span>";
+                        }
+                        $service_list .= "</span>";
+                        $service_list .= "</h4>";
+                        $service_list .= "<span class='$statustype'> - {$details['plugin_output']}</span></h4>";
+                        $service_list .= "<h4><span class='$statustype'>Last Check: $last_check - Next Check: $next_check</span>";
+                        $service_list .= "<span class='$statustype right'>Last OK: $last_ok</span>";
+                        $service_list .= "</h4>";
+                        $service_list .= "</li>";
                     }
                 }
             }
         }
-        echo "</ul>";
+        $service_list .= "</ul>";
+        echo "<h3>{$service_header_text}</h3>";
+        echo $service_list;
     }
 
     private static function _showDashboardEvents() {
@@ -113,7 +113,7 @@ class Client {
         echo "<ul>";
         foreach ($eventlist as $event) {
             $statetype = 'critical';
-            if ($event['object_type'] === 2) {
+            if ($event['object_type'] === NagiosServer::TYPE_SERVICE) {
                 switch ($event['state']) {
                     case NagiosServer::SERVICE_OK:
                     case NagiosServer::SERVICE_UNKNOWN:
@@ -132,8 +132,6 @@ class Client {
                         $statetype = 'ok';
                         break;
                     case NagiosServer::HOST_DOWN:
-                        $statetype = 'critical';
-                        break;
                     case NagiosServer::HOST_UNREACHABLE:
                         $statetype = 'critical';
                         break;
@@ -141,13 +139,19 @@ class Client {
             }
 
             $statetype = $statetype . ' no-bg';
-            $timestamp = date(DATE_RFC2822, $event['timestamp']);
+            $timestamp = Toolbox::formatNagiosTimestamp($event['timestamp']);
+            $hostlink = Toolbox::getLinkForHost($event['host_name']);
+            $servicelink = Toolbox::getLinkForService($event['host_name'], $event['description']);
             echo "<li class='neutral'>";
-            if ($event['object_type'] === 2) {
-                echo "<h5>".$event['host_name'] . " - <span class='service-name'>{$event['description']} - </span><span class='{$statetype}'>{$event['plugin_output']}</span><span class='right'>{$timestamp}</span></h5>";
+            $main_info = '';
+            $right_info = $timestamp;
+            if ($event['object_type'] === NagiosServer::TYPE_SERVICE) {
+                $main_info .= "$hostlink - <span class='service-name'>$servicelink</span>";
             } else {
-                echo "<h5>".$event['name'] . " - <span class='{$statetype}'>{$event['plugin_output']}</span></h5>";
+                $main_info .= $event['name'];
             }
+            $main_info .= " - <span class='{$statetype}'>{$event['plugin_output']}</span>";
+            echo "<h5>$main_info <span class='right'>$right_info</span></h5>";
             echo "</li>";
         }
         echo "</ul>";
@@ -155,7 +159,7 @@ class Client {
 
     static function showDashboard() {
         echo "<div id='nagios-dashboard' class='dashboard'>";
-        echo "<h3>Last refreshed: " . date(DATE_RFC2822) . "</h3>";
+        echo "<h3>Last refreshed: " . date('M d Y, h:i:s A') . "</h3>";
         self::_showDashboardHostAlerts();
         self::_showDashboardServiceAlerts();
         self::_showDashboardEvents();

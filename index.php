@@ -29,9 +29,4 @@ echo "<link rel='stylesheet' href='css/dashboard.css'>";
 echo "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js'></script>";
 echo "<script src='js/dashboard.js'></script>";
 echo "</head><body>";
-
-//NagiosServer::init();
-//Client::init();
-//Client::showDashboard();
-
 echo "</body></html>";

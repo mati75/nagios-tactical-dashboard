@@ -1,3 +1,4 @@
+<?php
 /*
  -------------------------------------------------------------------------
  Nagios Tactical Dashboard
@@ -18,20 +19,20 @@
  along with Nagios Tactical Dashboard. If not, see <http://www.gnu.org/licenses/>.
  --------------------------------------------------------------------------
  */
- 
- var refreshDashboard = function() {
-    $.ajax({
-        method: 'GET',
-        url: "ajax/dashboard.php",
-    }).done(function (data) {
-        $("body").empty();
-        $("body").append(data);
-    });
-};
 
-$(document).ready(function() {
-    refreshDashboard();
-    setInterval(function() {
-        refreshDashboard();
-    }, 15000);
-});
+class Toolbox {
+
+    public static function formatNagiosTimestamp($timestamp) {
+        return date('M d Y, h:i:s A', $timestamp / 1000);
+    }
+
+    public static function getLinkForHost($hostname) {
+        $href = NagiosServer::getExtinfoUrl(). "?type=1&host=$hostname";
+        return "<a target='_blank' href='$href'>$hostname</a>";
+    }
+
+    public static function getLinkForService($hostname, $servicename) {
+        $href = NagiosServer::getExtinfoUrl(). "?type=2&host=$hostname&service=$servicename";
+        return "<a target='_blank' href='$href'>$servicename</a>";
+    }
+}

@@ -34,6 +34,12 @@ class NagiosServer {
     const HOST_DOWN         = 4;
     const HOST_UNREACHABLE  = 8;
 
+    const STATE_SOFT        = 2;
+    const STATE_HARD        = 1;
+
+    const TYPE_HOST         = 1;
+    const TYPE_SERVICE      = 2;
+
     static function init() {
         self::$config = json_decode(file_get_contents('../config/server.json'), true);
     }
@@ -87,6 +93,10 @@ class NagiosServer {
     static function getEventsURL() {
         $time = 1 * 24 * 60 * 60;
         return self::$config['nagios_url'] . "/cgi-bin/archivejson.cgi?query=alertlist&starttime=-{$time}&endtime=%2B0";
+    }
+
+    static function getExtinfoUrl() {
+        return self::$config['nagios_url'] . "/cgi-bin/extinfo.cgi";
     }
 
     static function getServiceList() {
@@ -209,12 +219,31 @@ class NagiosServer {
         $hostlist = self::getHostList();
         if ($hostlist && is_array($hostlist)) {
             $result = [];
-            foreach ($hostlist as $host => $hstatus) {
-                $result[$hstatus][] = $host;
+            foreach ($hostlist as $host => $details) {
+                if (is_array($details)) {
+                    $result[$details['status']][$host] = $details;
+                } else {
+                    $result[$details][] = $host;
+                }
             }
             return $result;
         }
         return [];
+    }
+
+    static function isHostNonOK($host) {
+        $hostlist = self::getHostList();
+        if ($hostlist && is_array($hostlist)) {
+            foreach ($hostlist as $host => $details) {
+                if (is_array($details)) {
+                    return $details['status'] !== self::HOST_UP;
+                } else {
+                    return $details !== self::HOST_UP;
+                }
+            }
+            return true;
+        }
+        return false;
     }
 
     static function getEvents() {
@@ -227,7 +256,6 @@ class NagiosServer {
         }
         return [];
     }
-
     private static function _getEvents() {
         $response = self::getCurlResponse(self::getEventsURL());
         return array_reverse(json_decode($response, true)['data']['alertlist']);
