@@ -93,8 +93,8 @@ class Client {
                         $service_list .= "</span>";
                         $service_list .= "</h4>";
                         $service_list .= "<span class='$statustype'> - {$details['plugin_output']}</span></h4>";
-                        $service_list .= "<h4><span class='$statustype'>Last Check: $last_check - Next Check: $next_check</span>";
-                        $service_list .= "<span class='$statustype right'>Last OK: $last_ok</span>";
+                        $service_list .= "<h4><span class=''>Last Check: $last_check - Next Check: $next_check</span>";
+                        $service_list .= "<span class=' right'>Last OK: $last_ok</span>";
                         $service_list .= "</h4>";
                         $service_list .= "</li>";
                     }

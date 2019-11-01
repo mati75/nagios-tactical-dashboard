@@ -18,7 +18,7 @@
  along with Nagios Tactical Dashboard. If not, see <http://www.gnu.org/licenses/>.
  --------------------------------------------------------------------------
  */
- 
+
 body {
    background-color: #0d0d0d;
    font-family: 'Bitstream Vera Sans', Verdana, Tahoma, 'Sans serif';
@@ -79,8 +79,8 @@ h4, h5 {
 }
 
 .warn-ack {
-   background-color: #ededd4;
-   color: #77771d;
+   background-color: #7a7a29;
+   color: #ffffff;
 }
 
 .warn {
