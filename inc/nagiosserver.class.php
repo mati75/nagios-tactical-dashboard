@@ -82,21 +82,32 @@ class NagiosServer {
         return $response;
     }
 
+    private static function formatURLOptions($params = [], $join_char = '&') {
+        $param_str = '';
+        foreach ($params as $key => $value) {
+            $k = urlencode($key);
+            $v = urlencode($value);
+            $param_str .= "&$k=$v";
+        }
+
+        // Replace first join char with the user-specified one (Allows usage of ? instead of &)
+        return $join_char . substr($param_str, 1);
+    }
+
     static function getServiceStatusURL($params = []) {
-        return self::$config['nagios_url'] . '/cgi-bin/statusjson.cgi?query=servicelist';
+        return self::$config['nagios_url'] . '/cgi-bin/statusjson.cgi?query=servicelist' . self::formatURLOptions($params);
     }
 
     static function getHostStatusURL($params = []) {
-        return self::$config['nagios_url'] . '/cgi-bin/statusjson.cgi?query=hostlist';
+        return self::$config['nagios_url'] . '/cgi-bin/statusjson.cgi?query=hostlist' . self::formatURLOptions($params);
     }
 
-    static function getEventsURL() {
-        $time = self::$config['historical_days'] * 24 * 60 * 60;
-        return self::$config['nagios_url'] . "/cgi-bin/archivejson.cgi?query=alertlist&starttime=-{$time}&endtime=%2B0";
+    static function getEventsURL($params = []) {
+        return self::$config['nagios_url'] . '/cgi-bin/archivejson.cgi?query=alertlist' . self::formatURLOptions($params);
     }
 
-    static function getExtinfoUrl() {
-        return self::$config['nagios_url'] . "/cgi-bin/extinfo.cgi";
+    static function getExtinfoUrl($params = []) {
+        return self::$config['nagios_url'] . '/cgi-bin/extinfo.cgi' . self::formatURLOptions($params, '?');
     }
 
     static function getServiceList() {
@@ -120,7 +131,10 @@ class NagiosServer {
     }
 
     private static function _getNonOKServiceDetails() {
-        $response = self::getCurlResponse(self::getServiceStatusURL()."&details=true&servicestatus=unknown+warning+critical");
+        $response = self::getCurlResponse(self::getServiceStatusURL([
+            'details'       => 'true',
+            'servicestatus' => 'unknown warning critical'
+        ]));
         return json_decode($response, true)['data']['servicelist'];
     }
 
@@ -145,7 +159,10 @@ class NagiosServer {
     }
 
     private static function _getNonOKHostDetails() {
-        $response = self::getCurlResponse(self::getHostStatusURL()."&details=true&hoststatus=down+unreachable");
+        $response = self::getCurlResponse(self::getHostStatusURL([
+            'details'       => 'true',
+            'hoststatus'    => 'down unreachable'
+        ]));
         return json_decode($response, true)['data']['hostlist'];
     }
 
@@ -257,7 +274,11 @@ class NagiosServer {
         return [];
     }
     private static function _getEvents() {
-        $response = self::getCurlResponse(self::getEventsURL());
+        $time = self::$config['historical_days'] * 24 * 60 * 60;
+        $response = self::getCurlResponse(self::getEventsURL([
+            'starttime' => -($time),
+            'endtime'   => 0
+        ]));
         return array_reverse(json_decode($response, true)['data']['alertlist']);
     }
 }
