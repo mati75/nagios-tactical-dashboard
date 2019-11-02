@@ -2,5 +2,6 @@
     "nagios_url": "http://localhost/nagios/",
     "username": "nagiosadmin",
     "password": "nagiosadmin",
-    "refresh_interval": 15
+    "refresh_interval": 15,
+    "historical_days": 7
 }

@@ -91,7 +91,7 @@ class NagiosServer {
     }
 
     static function getEventsURL() {
-        $time = 1 * 24 * 60 * 60;
+        $time = self::$config['historical_days'] * 24 * 60 * 60;
         return self::$config['nagios_url'] . "/cgi-bin/archivejson.cgi?query=alertlist&starttime=-{$time}&endtime=%2B0";
     }
 
