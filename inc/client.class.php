@@ -95,6 +95,13 @@ class Client {
                         $service_list .= "<span class='$statustype'> - {$details['plugin_output']}</span></h4>";
                         $service_list .= "<h4><span class=''>Last Check: $last_check - Next Check: $next_check</span>";
                         $service_list .= "<span class=' right'>Last OK: $last_ok</span>";
+                        if (isset($details['_comments'])) {
+                            $service_list .= "<br>";
+                            foreach ($details['_comments'] as $comment_id => $comment) {
+                                $c_timestamp = Toolbox::formatNagiosTimestamp($comment['entry_time']);
+                                $service_list .= "<span class='ok no-bg'>{$comment['author']}: {$comment['comment_data']}&nbsp{$c_timestamp}</span>";
+                            }
+                        }
                         $service_list .= "</h4>";
                         $service_list .= "</li>";
                     }

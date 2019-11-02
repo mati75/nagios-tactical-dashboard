@@ -106,6 +106,10 @@ class NagiosServer {
         return self::$config['nagios_url'] . '/cgi-bin/archivejson.cgi?query=alertlist' . self::formatURLOptions($params);
     }
 
+    static function getCommentsURL($params = []) {
+        return self::$config['nagios_url'] . "/cgi-bin/statusjson.cgi?query=commentlist" . self::formatURLOptions($params);
+    }
+
     static function getExtinfoUrl($params = []) {
         return self::$config['nagios_url'] . '/cgi-bin/extinfo.cgi' . self::formatURLOptions($params, '?');
     }
@@ -118,6 +122,7 @@ class NagiosServer {
                 $details = self::_getNonOKServiceDetails();
                 // Replace service => status pairs for non-OK services with the service => details[] pair.
                 $servicelist = array_replace($servicelist, $details);
+                self::attachServiceComments($servicelist, self::getComments());
                 apcu_store('servicelist', $servicelist, self::$config['refresh_interval']);
             }
             return apcu_fetch('servicelist');
@@ -146,6 +151,7 @@ class NagiosServer {
                 $details = self::_getNonOKHostDetails();
                 // Replace host => status pairs for non-OK hosts with the host => details[] pair.
                 $hostlist = array_replace($hostlist, $details);
+                self::attachHostComments($hostlist, self::getComments());
                 apcu_store('hostlist_brief', $hostlist, self::$config['refresh_interval']);
             }
             return apcu_fetch('hostlist_brief');
@@ -273,6 +279,7 @@ class NagiosServer {
         }
         return [];
     }
+
     private static function _getEvents() {
         $time = self::$config['historical_days'] * 24 * 60 * 60;
         $response = self::getCurlResponse(self::getEventsURL([
@@ -280,5 +287,64 @@ class NagiosServer {
             'endtime'   => 0
         ]));
         return array_reverse(json_decode($response, true)['data']['alertlist']);
+    }
+
+    static function getComments() {
+        if (extension_loaded('apcu')) {
+            if (!apcu_exists('commentlist')) {
+                $commentlist = self::_getComments();
+                apcu_store('commentlist', $commentlist, self::$config['refresh_interval']);
+            }
+            return apcu_fetch('commentlist');
+        }
+        return [];
+    }
+
+    private static function _getComments() {
+        $response = self::getCurlResponse(self::getCommentsURL([
+            'details'           => 'true',
+            // Get only non-expired comments
+            'starttime'         => 0,
+            'endtime'           => 0,
+            'commenttimefield'  => 'expiretime',
+            // Only get acknowledgement comments for now
+            'entrytypes'        => 'acknowledgement'
+        ]));
+        return array_reverse(json_decode($response, true)['data']['commentlist']);
+    }
+
+    private static function attachHostComments(&$hostlist, $commentlist) {
+        foreach ($hostlist as $host => &$details) {
+            foreach ($commentlist as $comment_id => $c_details) {
+                if (is_array($details) && $c_details['comment_type'] === self::TYPE_HOST &&
+                $c_details['host_name'] === $host) {
+                    // This comment applies to the host
+                    // Remove redundant/useless data
+                    unset($c_details['host_name'], $c_details['comment_id'], $c_details['comment_type'],
+                        $c_details['entry_type']);
+                    $details['_comments'][$comment_id] = $c_details;
+                }
+            }
+        }
+    }
+
+    private static function attachServiceComments(&$servicelist, $commentlist) {
+        foreach ($servicelist as $host => &$services) {
+            foreach ($services as $service => &$details) {
+                if (!is_array($details)) {
+                    continue;
+                }
+                foreach ($commentlist as $comment_id => $c_details) {
+                    if ($c_details['comment_type'] === self::TYPE_SERVICE &&
+                        $c_details['host_name'] === $host && $c_details['service_description'] === $service) {
+                        // This comment applies to the host
+                        // Remove redundant/useless data
+                        unset($c_details['host_name'], $c_details['service_description'], $c_details['comment_id'],
+                            $c_details['comment_type'], $c_details['entry_type']);
+                        $details['_comments'][$comment_id] = $c_details;
+                    }
+                }
+            }
+        }
     }
 }
