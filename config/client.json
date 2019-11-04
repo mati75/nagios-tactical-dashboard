@@ -1,3 +1,5 @@
 {
-  "group_host_services": false
+  "hide_services_on_down_hosts": true,
+  "historical_chart_rebuild_minutes": 5,
+  "refresh_interval": 15
 }

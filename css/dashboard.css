@@ -40,6 +40,10 @@ body {
    margin-left: 9px;
 }
 
+.upper {
+   text-transform: uppercase;
+}
+
 h3 {
    color: #f4a024;
    margin-bottom: 5px;
@@ -131,6 +135,10 @@ h4, h5 {
    margin-top: 1px;
    margin-bottom: 0;
    color: white;
+}
+
+#historical-list .right {
+   margin-right: 5px;
 }
 
 .dashboard ul li a {

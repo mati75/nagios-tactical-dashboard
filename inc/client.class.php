@@ -38,7 +38,19 @@ class Client {
             if (isset($all_hosts[NagiosServer::HOST_DOWN])) {
                 foreach ($all_hosts[NagiosServer::HOST_DOWN] as $host => $details) {
                     $hostlink = Toolbox::getLinkForHost($host);
-                    echo "<li class='critical'><h4>{$hostlink} - Down</h4>";
+                    echo "<li class='critical'><h4>{$hostlink} - Down<span class='right'>";
+                    if ($details['state_type'] === NagiosServer::STATE_SOFT) {
+                        echo "<span class='space-m upper'>Soft</span>";
+                    } else {
+                        echo "<span class='space-m upper'>Hard</span>";
+                    }
+                    if ($details['is_flapping']) {
+                        echo "<span class='space-m warn no-bg upper'>Flapping</span>";
+                    }
+                    if ($details['problem_has_been_acknowledged']) {
+                        echo "<span class='space-m ok no-bg upper'>Ack</span>";
+                    }
+                    echo "</span></h4>";
                     echo "{$details['plugin_output']}";
                     echo "</li>";
                 }
@@ -94,15 +106,15 @@ class Client {
                         $service_list .= "<li class='$statustype'><h4>{$hostlink} - <span class='service-name'>{$servicelink}</span>";
                         $service_list .= "<span class='right'>";
                         if ($details['state_type'] === NagiosServer::STATE_SOFT) {
-                            $service_list .= "<span class='space-m'>Soft</span>";
+                            $service_list .= "<span class='space-m upper'>Soft</span>";
                         } else {
-                            $service_list .= "<span class='space-m'>Hard</span>";
+                            $service_list .= "<span class='space-m upper'>Hard</span>";
                         }
                         if ($details['is_flapping']) {
-                            $service_list .= "<span class='space-m warn no-bg'>Flapping</span>";
+                            $service_list .= "<span class='space-m warn no-bg upper'>Flapping</span>";
                         }
                         if ($details['problem_has_been_acknowledged']) {
-                            $service_list .= "<span class='space-m ok no-bg'>Ack</span>";
+                            $service_list .= "<span class='space-m ok no-bg upper'>Ack</span>";
                         }
                         $service_list .= "</span>";
                         $service_list .= "</h4>";
@@ -165,8 +177,14 @@ class Client {
             $timestamp = Toolbox::formatNagiosTimestamp($event['timestamp']);
 
             echo "<li class='neutral'>";
-            $main_info = '';
-            $right_info = $timestamp;
+            $right_info = '';
+            if ($event['state_type'] === NagiosServer::STATE_SOFT) {
+                $right_info .= "<span class='space-m upper'>Soft</span>";
+            } else {
+                $right_info .= "<span class='space-m upper'>Hard</span>";
+            }
+            $main_info = $timestamp . "<span class='right'>$right_info</span><br>";
+
             if ($event['object_type'] === NagiosServer::TYPE_SERVICE) {
                 $hostlink = Toolbox::getLinkForHost($event['host_name']);
                 $servicelink = Toolbox::getLinkForService($event['host_name'], $event['description']);
@@ -176,7 +194,8 @@ class Client {
                 $main_info .= $hostlink;
             }
             $main_info .= " - <span class='{$statetype}'>{$event['plugin_output']}</span>";
-            echo "<p>$main_info <span class='right'>$right_info</span></p>";
+
+            echo "<p>$main_info</p>";
             echo "</li>";
         }
         echo "</ul></div>";
@@ -186,21 +205,7 @@ class Client {
         if (extension_loaded('apcu')) {
             if (!apcu_exists('historicalchart_data')) {
                 $eventlist = NagiosServer::getEvents();
-                $data = [
-                    'labels'    => [],
-                    'datasets'  => [
-                        [
-                            'label' => 'Warning',
-                            'data'  => [],
-                            'backgroundColor' => '#ffff00'
-                        ],
-                        [
-                            'label' => 'Critical',
-                            'data'  => [],
-                            'backgroundColor' => '#880000'
-                        ]
-                    ]
-                ];
+
                 $warn_data = [];
                 $critical_data = [];
 
@@ -230,7 +235,6 @@ class Client {
                 }
 
                 $x_labels = array_reverse(array_values($data['labels']));
-                unset($data['labels']);
 
                 $warn_data = array_reverse(array_values($warn_data));
                 $critical_data = array_reverse(array_values($critical_data));
@@ -256,7 +260,7 @@ class Client {
         $js = <<<JAVASCRIPT
         $(document).ready(function() {
             let chart = document.getElementById('historical-chart');
-            chart.height = 64;
+            chart.height = 32;
             var stackedBar = new Chart(chart, {
                 type: 'bar',
                 data: {
@@ -264,17 +268,20 @@ class Client {
                         {
                             label: "Warning",
                             data: $warn_data,
-                            backgroundColor: "#ffff00"
+                            backgroundColor: "#ffff33"
                         },
                         {
                             label: "Critical",
                             data: $critical_data,
-                            backgroundColor: "#880000"
+                            backgroundColor: "#ff6666"
                         }
                     ]
                 },
                 options: {
                     animation: false,
+                    legend: {
+                        display: false
+                    },
                     scales: {
                         xAxes: [{
                             labels: $x_labels,
