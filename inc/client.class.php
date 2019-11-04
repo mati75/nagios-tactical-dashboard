@@ -21,7 +21,7 @@
  */
 
 class Client {
-    private static $config = null;
+    public static $config = null;
 
     static function init() {
         self::$config = json_decode(file_get_contents('../config/client.json'), true);
@@ -36,14 +36,18 @@ class Client {
             $all_hosts = NagiosServer::getHostsByStatus();
 
             if (isset($all_hosts[NagiosServer::HOST_DOWN])) {
-                foreach ($all_hosts[NagiosServer::HOST_DOWN] as $host) {
-                    echo "<li class='critical'><h4>{$host} - Down</h4>";
+                foreach ($all_hosts[NagiosServer::HOST_DOWN] as $host => $details) {
+                    $hostlink = Toolbox::getLinkForHost($host);
+                    echo "<li class='critical'><h4>{$hostlink} - Down</h4>";
+                    echo "{$details['plugin_output']}";
                     echo "</li>";
                 }
             }
             if (isset($all_hosts[NagiosServer::HOST_UNREACHABLE])) {
-                foreach ($all_hosts[NagiosServer::HOST_UNREACHABLE] as $host) {
-                    echo "<li class='critical'><h4>{$host} - Unreachable</h4>";
+                foreach ($all_hosts[NagiosServer::HOST_UNREACHABLE] as $host => $details) {
+                    $hostlink = Toolbox::getLinkForHost($host);
+                    echo "<li class='critical'><h4>{$hostlink} - Unreachable</h4>";
+                    echo "{$details['plugin_output']}";
                     echo "</li>";
                 }
             }
@@ -58,10 +62,18 @@ class Client {
             $service_list .= "<li class='ok'><h4>All services OK</h4></li>";
         } else {
             $all_services = NagiosServer::getServiceList();
+            $all_hosts = NagiosServer::getHostsByStatus();
 
             $to_show = [];
             foreach ($all_services as $host => $services) {
                 foreach ($services as $service => $details) {
+                    if (self::$config['hide_services_on_down_hosts']) {
+                        if (isset($all_hosts[NagiosServer::HOST_DOWN][$host]) ||
+                            isset($all_hosts[NagiosServer::HOST_UNREACHABLE][$host]) ||
+                            isset($all_hosts[NagiosServer::HOST_PENDING][$host])) {
+                            continue;
+                        }
+                    }
                     $to_show[$host][$details['status']][$service] = $details;
                 }
             }
@@ -72,12 +84,14 @@ class Client {
                         $last_check = Toolbox::formatNagiosTimestamp($details['last_check']);
                         $last_ok = Toolbox::formatNagiosTimestamp($details['last_time_ok']);
                         $next_check = Toolbox::formatNagiosTimestamp($details['next_check']);
+                        $hostlink = Toolbox::getLinkForHost($host);
+                        $servicelink = Toolbox::getLinkForService($host, $service);
 
                         $statustype = $status === NagiosServer::SERVICE_WARNING ? 'warn' : 'critical';
                         if ($details['problem_has_been_acknowledged']) {
                             $statustype .= '-ack';
                         }
-                        $service_list .= "<li class='$statustype'><h4>{$host} - <span class='service-name'>{$service}</span>";
+                        $service_list .= "<li class='$statustype'><h4>{$hostlink} - <span class='service-name'>{$servicelink}</span>";
                         $service_list .= "<span class='right'>";
                         if ($details['state_type'] === NagiosServer::STATE_SOFT) {
                             $service_list .= "<span class='space-m'>Soft</span>";
@@ -117,29 +131,31 @@ class Client {
         echo "<h3>Historical</h3>";
         $eventlist = NagiosServer::getEvents();
 
-        echo "<ul>";
+        self::_showHistoricalChart();
+
+        echo "<div id='historical-list'><ul>";
         foreach ($eventlist as $event) {
             $statetype = 'critical';
             if ($event['object_type'] === NagiosServer::TYPE_SERVICE) {
                 switch ($event['state']) {
-                    case NagiosServer::SERVICE_OK:
-                    case NagiosServer::SERVICE_UNKNOWN:
+                    case NagiosServer::ALERT_SERVICE_OK:
                         $statetype = 'ok';
                         break;
-                    case NagiosServer::SERVICE_WARNING:
+                    case NagiosServer::ALERT_SERVICE_WARNING:
                         $statetype = 'warn';
                         break;
-                    case NagiosServer::SERVICE_CRITICAL:
+                    case NagiosServer::ALERT_SERVICE_UNKNOWN:
+                    case NagiosServer::ALERT_SERVICE_CRITICAL:
                         $statetype = 'critical';
                         break;
                 }
             } else {
                 switch ($event['state']) {
-                    case NagiosServer::HOST_UP:
+                    case NagiosServer::ALERT_HOST_UP:
                         $statetype = 'ok';
                         break;
-                    case NagiosServer::HOST_DOWN:
-                    case NagiosServer::HOST_UNREACHABLE:
+                    case NagiosServer::ALERT_HOST_DOWN:
+                    case NagiosServer::ALERT_HOST_UNREACHABLE:
                         $statetype = 'critical';
                         break;
                 }
@@ -147,21 +163,136 @@ class Client {
 
             $statetype = $statetype . ' no-bg';
             $timestamp = Toolbox::formatNagiosTimestamp($event['timestamp']);
-            $hostlink = Toolbox::getLinkForHost($event['host_name']);
-            $servicelink = Toolbox::getLinkForService($event['host_name'], $event['description']);
+
             echo "<li class='neutral'>";
             $main_info = '';
             $right_info = $timestamp;
             if ($event['object_type'] === NagiosServer::TYPE_SERVICE) {
+                $hostlink = Toolbox::getLinkForHost($event['host_name']);
+                $servicelink = Toolbox::getLinkForService($event['host_name'], $event['description']);
                 $main_info .= "$hostlink - <span class='service-name'>$servicelink</span>";
             } else {
-                $main_info .= $event['name'];
+                $hostlink = Toolbox::getLinkForHost($event['name']);
+                $main_info .= $hostlink;
             }
             $main_info .= " - <span class='{$statetype}'>{$event['plugin_output']}</span>";
-            echo "<h5>$main_info <span class='right'>$right_info</span></h5>";
+            echo "<p>$main_info <span class='right'>$right_info</span></p>";
             echo "</li>";
         }
-        echo "</ul>";
+        echo "</ul></div>";
+    }
+
+    private static function _getHistoricalChartData() {
+        if (extension_loaded('apcu')) {
+            if (!apcu_exists('historicalchart_data')) {
+                $eventlist = NagiosServer::getEvents();
+                $data = [
+                    'labels'    => [],
+                    'datasets'  => [
+                        [
+                            'label' => 'Warning',
+                            'data'  => [],
+                            'backgroundColor' => '#ffff00'
+                        ],
+                        [
+                            'label' => 'Critical',
+                            'data'  => [],
+                            'backgroundColor' => '#880000'
+                        ]
+                    ]
+                ];
+                $warn_data = [];
+                $critical_data = [];
+
+                // Fill days from -Client::$config['historical_days'] to today
+                for ($i = 0; $i < NagiosServer::getSafeConfig()['historical_days']; $i++) {
+                    $data['labels'][] = date('M dS', strtotime("-{$i} days"));
+                    $warn_data[$i] = 0;
+                    $critical_data[$i] = 0;
+                }
+
+                foreach ($eventlist as $event) {
+                    $relative_day = abs(time() - ($event['timestamp'] / 1000));
+                    $relative_day = intval($relative_day / 86400);
+
+                    $critical_states = [NagiosServer::ALERT_HOST_UNREACHABLE, NagiosServer::ALERT_HOST_DOWN, NagiosServer::ALERT_SERVICE_CRITICAL];
+                    $warn_states = [NagiosServer::ALERT_SERVICE_WARNING];
+
+                    $type = in_array($event['state'], $critical_states) ? 1 : (in_array($event['state'], $warn_states) ? 0 : -1);
+                    switch ($type) {
+                        case 0:
+                            $warn_data[$relative_day]++;
+                            break;
+                        case 1:
+                            $critical_data[$relative_day]++;
+                            break;
+                    }
+                }
+
+                $x_labels = array_reverse(array_values($data['labels']));
+                unset($data['labels']);
+
+                $warn_data = array_reverse(array_values($warn_data));
+                $critical_data = array_reverse(array_values($critical_data));
+                $chartdata = [
+                    'warn'  => $warn_data,
+                    'critical'  => $critical_data,
+                    'labels'    =>  $x_labels
+                ];
+                apcu_store('historicalchart_data', $chartdata, self::$config['historical_chart_rebuild_minutes'] * 60);
+            }
+            return apcu_fetch('historicalchart_data');
+        }
+        return [];
+    }
+
+    private static function _showHistoricalChart() {
+        // Get (maybe) cached chart data to avoid unneeded re-calculations
+        $chartdata = self::_getHistoricalChartData();
+        $warn_data = json_encode($chartdata['warn']);
+        $critical_data = json_encode($chartdata['critical']);
+        $x_labels = json_encode($chartdata['labels']);
+
+        $js = <<<JAVASCRIPT
+        $(document).ready(function() {
+            let chart = document.getElementById('historical-chart');
+            chart.height = 64;
+            var stackedBar = new Chart(chart, {
+                type: 'bar',
+                data: {
+                    datasets: [
+                        {
+                            label: "Warning",
+                            data: $warn_data,
+                            backgroundColor: "#ffff00"
+                        },
+                        {
+                            label: "Critical",
+                            data: $critical_data,
+                            backgroundColor: "#880000"
+                        }
+                    ]
+                },
+                options: {
+                    animation: false,
+                    scales: {
+                        xAxes: [{
+                            labels: $x_labels,
+                            stacked: true,
+                            ticks: {
+                                min: 0
+                            }
+                        }],
+                        yAxes: [{
+                            stacked: true
+                        }]
+                    }
+                }
+            });
+        });
+JAVASCRIPT;
+        echo "<canvas id='historical-chart'></canvas>";
+        echo "<script>$js</script>";
     }
 
     static function showDashboard() {

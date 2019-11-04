@@ -21,7 +21,7 @@
 
 body {
    background-color: #0d0d0d;
-   font-family: 'Bitstream Vera Sans', Verdana, Tahoma, 'Sans serif';
+   font-family: 'Bitstream Vera Sans', Verdana, Tahoma, 'Sans serif', sans-serif;
 }
 
 .no-bg {
@@ -64,11 +64,11 @@ h4, h5 {
 
 .ok, .ok h4 {
    background-color: #1f1f1f;
-   color: #33fd62 !important;
+   color: #00ff00 !important;
 }
 
 .badge-ok {
-   background-color: #33fd62;
+   background-color: #00ff00;
    color: #d4edda;
    font-weight: bold;
    border-radius: 5px;
@@ -130,6 +130,7 @@ h4, h5 {
 .dashboard ul li p {
    margin-top: 1px;
    margin-bottom: 0;
+   color: white;
 }
 
 .dashboard ul li a {

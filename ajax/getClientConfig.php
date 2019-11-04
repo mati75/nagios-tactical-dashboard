@@ -20,26 +20,12 @@
  --------------------------------------------------------------------------
  */
 
-class Toolbox {
+include("../inc/includes.php");
 
-    public static function formatNagiosTimestamp($timestamp) {
-        return date('M d Y, h:i:s A', $timestamp / 1000);
-    }
+header("Cache-Control: no-store, no-cache, must-revalidate");
+header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
+header("Content-Type: application/json; charset=UTF-8", true);
 
-    public static function getLinkForHost($hostname) {
-        $href = NagiosServer::getExtinfoUrl([
-            'type'  => 1,
-            'host'  => $hostname
-        ]);
-        return "<a target='_blank' href='$href'>$hostname</a>";
-    }
+Client::init();
 
-    public static function getLinkForService($hostname, $servicename) {
-        $href = NagiosServer::getExtinfoUrl([
-            'type'      => 2,
-            'host'      => $hostname,
-            'service'   => $servicename
-        ]);
-        return "<a target='_blank' href='$href'>$servicename</a>";
-    }
-}
+echo json_encode(Client::$config);

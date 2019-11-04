@@ -40,6 +40,14 @@ class NagiosServer {
     const TYPE_HOST         = 1;
     const TYPE_SERVICE      = 2;
 
+    const ALERT_HOST_UP             = 1;
+    const ALERT_HOST_DOWN           = 2;
+    const ALERT_HOST_UNREACHABLE    = 4;
+    const ALERT_SERVICE_OK          = 8;
+    const ALERT_SERVICE_WARNING     = 16;
+    const ALERT_SERVICE_CRITICAL    = 32;
+    const ALERT_SERVICE_UNKNOWN     = 64;
+
     static function init() {
         self::$config = json_decode(file_get_contents('../config/server.json'), true);
     }
@@ -159,6 +167,23 @@ class NagiosServer {
         return [];
     }
 
+    public static function getHostAlerts() {
+        $hostlist = self::getHostList();
+        $hostlist = array_filter($hostlist, function($host, $details) {
+            if (is_array($details)) {
+                return true;
+            }
+            return false;
+        }, ARRAY_FILTER_USE_BOTH);
+        uasort($hostlist, function($details1, $details2) {
+            if ($details1['last_state_change'] === $details2['last_state_change']) {
+                return 0;
+            }
+            return ($details1['last_state_change'] > $details2['last_state_change']) ? -1 : 1;
+        });
+        return $hostlist;
+    }
+
     private static function _getHostList() {
         $response = self::getCurlResponse(self::getHostStatusURL());
         return json_decode($response, true)['data']['hostlist'];
@@ -183,8 +208,10 @@ class NagiosServer {
         if ($hostlist && is_array($hostlist)) {
             $count = 0;
             foreach ($hostlist as $host => $status) {
-                if (in_array($status, $statuses)) {
-                    $count += 1;
+                if (is_array($status)) {
+                    if (in_array($status['status'], $statuses)) {
+                        $count += 1;
+                    }
                 }
             }
             return $count;
@@ -284,7 +311,7 @@ class NagiosServer {
         $time = self::$config['historical_days'] * 24 * 60 * 60;
         $response = self::getCurlResponse(self::getEventsURL([
             'starttime' => -($time),
-            'endtime'   => 0
+            'endtime'   => '+0'
         ]));
         return array_reverse(json_decode($response, true)['data']['alertlist']);
     }
@@ -346,5 +373,11 @@ class NagiosServer {
                 }
             }
         }
+    }
+
+    public static function getSafeConfig() {
+        $safe_config = self::$config;
+        unset($safe_config['username'], $safe_config['password']);
+        return $safe_config;
     }
 }
