@@ -7,7 +7,7 @@ This dashboard differs in that it tries to reduce the amount of network traffic 
 The following server.json example is for reference only. You will need to substitute the values to match your environment. All shown values are required.
 ```javascript
 {
-    "nagios_url": "http://localhost/nagios,
+    "nagios_url": "http://localhost/nagios",
     "username": "nagiosadmin",
     "password": "nagiosadmin",
     "refresh_interval": 15,
