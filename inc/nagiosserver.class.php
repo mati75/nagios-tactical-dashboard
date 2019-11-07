@@ -129,7 +129,13 @@ class NagiosServer {
                 $servicelist = self::_getServiceList();
                 $details = self::_getNonOKServiceDetails();
                 // Replace service => status pairs for non-OK services with the service => details[] pair.
-                $servicelist = array_replace($servicelist, $details);
+                foreach ($servicelist as $host => $services) {
+                    foreach ($services as $service => $status) {
+                        if (isset($details[$host][$service])) {
+                            $servicelist[$host][$service] = $details[$host][$service];
+                        }
+                    }
+                }
                 self::attachServiceComments($servicelist, self::getComments());
                 apcu_store('servicelist', $servicelist, self::$config['refresh_interval']);
             }
@@ -169,19 +175,46 @@ class NagiosServer {
 
     public static function getHostAlerts() {
         $hostlist = self::getHostList();
-        $hostlist = array_filter($hostlist, function($host, $details) {
+        $alerts = [];
+        foreach ($hostlist as $host => $details) {
             if (is_array($details)) {
-                return true;
+                // This data will be sent to the client so only send the values that will be used
+                $used_values = ['status', 'state_type', 'is_flapping', 'problem_has_been_acknowledged',
+                    'plugin_output', 'last_state_change'];
+                $alerts[$host] = [];
+                foreach ($used_values as $value) {
+                    $alerts[$host][$value] = $details[$value];
+                }
             }
-            return false;
-        }, ARRAY_FILTER_USE_BOTH);
-        uasort($hostlist, function($details1, $details2) {
-            if ($details1['last_state_change'] === $details2['last_state_change']) {
-                return 0;
+        }
+
+        return $alerts;
+    }
+
+    public static function getServiceAlerts() {
+        $servicelist = self::getServiceList();
+        $alerts = [];
+        foreach ($servicelist as $host => $services) {
+            $alerts[$host] = [];
+            foreach ($services as $service => $details) {
+                if (is_array($details)) {
+                    // This data will be sent to the client so only send the values that will be used
+                    $used_values = ['status', 'state_type', 'is_flapping', 'problem_has_been_acknowledged',
+                        'plugin_output', 'last_state_change', '_comments'];
+                    $alerts[$host][$service] = [];
+                    foreach ($used_values as $value) {
+                        if (isset($details[$value])) {
+                            $alerts[$host][$service][$value] = $details[$value];
+                        }
+                    }
+                    $alerts[$host][$service]['last_check'] = Toolbox::formatNagiosTimestamp($details['last_check']);
+                    $alerts[$host][$service]['last_time_ok'] = Toolbox::formatNagiosTimestamp($details['last_time_ok']);
+                    $alerts[$host][$service]['next_check'] = Toolbox::formatNagiosTimestamp($details['next_check']);
+                }
             }
-            return ($details1['last_state_change'] > $details2['last_state_change']) ? -1 : 1;
-        });
-        return $hostlist;
+        }
+
+        return $alerts;
     }
 
     private static function _getHostList() {
@@ -210,7 +243,11 @@ class NagiosServer {
             foreach ($hostlist as $host => $status) {
                 if (is_array($status)) {
                     if (in_array($status['status'], $statuses)) {
-                        $count += 1;
+                        $count++;
+                    }
+                } else {
+                    if (in_array($status, $statuses)) {
+                        $count++;
                     }
                 }
             }
@@ -233,11 +270,11 @@ class NagiosServer {
                 foreach ($services as $service => $details) {
                     if (is_array($details)) {
                         if (in_array($details['status'], $statuses)) {
-                            $count += 1;
+                            $count++;
                         }
                     } else {
                         if (in_array($details, $statuses)) {
-                            $count += 1;
+                            $count++;
                         }
                     }
                 }
@@ -313,7 +350,11 @@ class NagiosServer {
             'starttime' => -($time),
             'endtime'   => '+0'
         ]));
-        return array_reverse(json_decode($response, true)['data']['alertlist']);
+        $alertlist = json_decode($response, true)['data']['alertlist'];
+        foreach ($alertlist as &$alert) {
+            $alert['_time'] = Toolbox::formatNagiosTimestamp($alert['timestamp']);
+        }
+        return array_reverse($alertlist);
     }
 
     static function getComments() {
@@ -337,7 +378,12 @@ class NagiosServer {
             // Only get acknowledgement comments for now
             'entrytypes'        => 'acknowledgement'
         ]));
-        return array_reverse(json_decode($response, true)['data']['commentlist']);
+        $commentlist = json_decode($response, true)['data']['commentlist'];
+        // Replace entry_time with formatted time string
+        foreach ($commentlist as $comment_id => &$c_details) {
+            $c_details['entry_time'] = Toolbox::formatNagiosTimestamp($c_details['entry_time']);
+        }
+        return array_reverse($commentlist);
     }
 
     private static function attachHostComments(&$hostlist, $commentlist) {

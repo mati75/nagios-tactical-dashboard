@@ -20,10 +20,14 @@
  --------------------------------------------------------------------------
  */
 
-class Client {
-    public static $config = null;
+include("../inc/includes.php");
 
-    static function init() {
-        self::$config = json_decode(file_get_contents('../config/client.json'), true);
-    }
-}
+header("Cache-Control: no-store, no-cache, must-revalidate");
+header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
+header("Content-Type: application/json; charset=UTF-8", true);
+
+NagiosServer::init();
+Client::init();
+
+$config = array_merge(NagiosServer::getSafeConfig(), Client::$config);
+echo json_encode($config);

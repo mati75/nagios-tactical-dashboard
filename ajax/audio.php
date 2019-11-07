@@ -22,13 +22,17 @@
 
 include("../inc/includes.php");
 
-header("Cache-Control: no-store, no-cache, must-revalidate");
-header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
+// Cache sounds for an hour
+header("Cache-Control: max-age=3600");
+header("Content-Type: audio/mpeg, audio/x-mpeg, audio/x-mpeg-3, audio/mpeg3", true);
 
-if (!extension_loaded('apcu')) {
-    echo "<h2>APCu Extension Missing!</h2>";
+$sound_name = preg_replace("/[^A-Za-z0-9 ]/", '', $_GET['sound']);
+$filepath = '../sounds/' . $sound_name . '.mp3';
+
+if (!file_exists($filepath)) {
+    header("Cache-Control: no-store, no-cache, must-revalidate", true);
+    return;
 }
 
-NagiosServer::init();
-Client::init();
-Client::showDashboard();
+header('Content-length: ' . filesize($filepath));
+echo readfile($filepath);

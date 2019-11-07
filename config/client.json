@@ -1,5 +1,6 @@
 {
   "hide_services_on_down_hosts": true,
   "historical_chart_rebuild_minutes": 5,
-  "refresh_interval": 15
+  "refresh_interval": 15,
+  "play_sounds": true
 }

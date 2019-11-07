@@ -22,10 +22,20 @@
 
 include("../inc/includes.php");
 
+// Don't cache these alerts as they are ever-changing
 header("Cache-Control: no-store, no-cache, must-revalidate");
 header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
 header("Content-Type: application/json; charset=UTF-8", true);
 
-Client::init();
+if (!extension_loaded('apcu')) {
+    // Custom HTTP code indicating missing APCu extension
+    http_response_code(555);
+    return;
+}
 
-echo json_encode(Client::$config);
+NagiosServer::init();
+
+echo json_encode([
+    'hosts'     => NagiosServer::getHostAlerts(),
+    'services'  => NagiosServer::getServiceAlerts()
+], JSON_FORCE_OBJECT);
