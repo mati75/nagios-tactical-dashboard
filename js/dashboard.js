@@ -221,11 +221,16 @@ window.nagiosDashboard = function () {
 
          // Add new alerts
          $.each(data['services'], function(host, services) {
+            let host_match = hostalertlist.find("[data-host='" + host + "']");
+            if (self.config["hide_services_on_down_hosts"] && host_match.length > 0) {
+               return;
+            }
             $.each(services, function(service, details) {
                if (details === undefined) {
                   // Bad alert
                   return true;
                }
+
                let match = servicealertlist.find("[data-host='" + host + "'][data-service='" + service + "']");
                if (match.length === 0) {
                   // New alert
@@ -279,7 +284,6 @@ window.nagiosDashboard = function () {
    };
 
    const addEvent = function(event) {
-      console.log("add event");
       let eventlist = $('#historical_event_list ul');
       let statetype = 'critical';
       if (event['object_type'] === TYPE_SERVICE) {

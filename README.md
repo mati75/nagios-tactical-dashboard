@@ -26,12 +26,14 @@ The following client.json example is for reference only. You will need to substi
 All shown values are required.
 ```javascript
 {
-    "hide_services_on_down_hosts": true,
-    "historical_chart_rebuild_minutes": 5,
-    "refresh_interval": 15
+  "hide_services_on_down_hosts": true,
+  "historical_chart_rebuild_minutes": 5,
+  "refresh_interval": 15,
+  "play_sounds": true
 }
 ```
 #### Options
 - hide_services_on_down_hosts - All active service alerts for a down or unreachable host will be hidden on the dashboard to reduce clutter.
 - historical_chart_rebuild_minutes - Interval in minutes for refreshing the historical chart counts and labels.
-- refresh_interval - Time in seconds that the dashboard is refreshed and data is fetched from the web server. It is useless to make this interval shorter than the server.json setting since the data is unlikely to have changed.
+- refresh_interval - Time in seconds that the dashboard is refreshed and data is fetched from the web server.
+- play_sounds - If true, sounds will be played for new alerts and when alerts clear.
