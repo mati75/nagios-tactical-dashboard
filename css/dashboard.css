@@ -44,6 +44,18 @@ body {
    text-transform: uppercase;
 }
 
+.quietfor-ok {
+   color: #00ff00 !important;
+}
+
+.quietfor-warn {
+   color: #ffff00 !important;
+}
+
+.quietfor-critical {
+   color: #ff4d4d !important;
+}
+
 h3 {
    color: #f4a024;
    margin-bottom: 5px;
@@ -72,8 +84,8 @@ h4, h5 {
 }
 
 .badge-ok {
-   background-color: #00ff00;
-   color: #d4edda;
+   background-color: #d4edda;
+   color: #00ff00;
    font-weight: bold;
    border-radius: 5px;
    margin: 3px;
@@ -89,7 +101,17 @@ h4, h5 {
 
 .warn {
    background-color: #666600;
+   color: #ffff00 !important;
+}
+
+.badge-warning {
+   background-color: #666600;
    color: #ffff00;
+   font-weight: bold;
+   border-radius: 5px;
+   margin: 3px;
+   padding: 3px 3px 3px 3px;
+   font-size: 0.7em;
 }
 
 .critical-ack {
@@ -99,18 +121,17 @@ h4, h5 {
 
 .critical {
    background-color: #660000;
-   color: #ff8888;
+   color: #ff8888 !important;
 }
 
 .badge-critical {
-   background-color: #ff8888;
-   color: #880000;
+   background-color: #660000;
+   color: #ff8888;
    font-weight: bold;
    border-radius: 5px;
    margin: 3px;
-   padding: 0 3px 0 3px;
+   padding: 3px 3px 3px 3px;
    font-size: 0.7em;
-   float: right;
 }
 
 .dashboard ul {

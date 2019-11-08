@@ -102,6 +102,15 @@ window.nagiosDashboard = function () {
       }
       hostalert += "</span></h4>";
       hostalert += details['plugin_output'];
+      hostalert += "<h4><span class=''>Last Check: " + details['last_check'] + " - Next Check: " + details['next_check'] + "</span>";
+      hostalert += "<span class=' right'>Last OK: " + details['last_time_ok'] + "</span>";
+      if (details['_comments'] !== undefined) {
+         hostalert += "<br>";
+         $.each(details['_comments'], function(comment_id, comment) {
+            hostalert += "<span class='ok no-bg'>" + comment['author'] + ": " + comment['comment_data'] + "&nbsp-&nbsp" + comment['entry_time'] + "</span>";
+         });
+      }
+      hostalert += "</h4>";
       hostalert += "</li>";
       let hostalert_entry = null;
       if (old_alert === undefined) {
@@ -136,7 +145,7 @@ window.nagiosDashboard = function () {
       }
       servicealert += "</span>";
       servicealert += "</h4>";
-      servicealert += "<span class='" + statustype + "'> - " + details['plugin_output'] + "</span></h4>";
+      servicealert += "<span class='" + statustype + "'> - " + details['plugin_output'] + "</span>";
       servicealert += "<h4><span class=''>Last Check: " + details['last_check'] + " - Next Check: " + details['next_check'] + "</span>";
       servicealert += "<span class=' right'>Last OK: " + details['last_time_ok'] + "</span>";
       if (details['_comments'] !== undefined) {
@@ -168,6 +177,8 @@ window.nagiosDashboard = function () {
          servicealertlist.addClass('slide-fade');
       }
 
+      let host_count = 0;
+
       if (data['hosts'] !== undefined) {
          // Remove old alerts
          let current_alerts = hostalertlist.find("li");
@@ -186,6 +197,7 @@ window.nagiosDashboard = function () {
                return true;
             }
 
+            host_count++;
             let match = hostalertlist.find("[data-host='" + host + "']");
             if (match.length === 0) {
                // New alert
@@ -208,6 +220,9 @@ window.nagiosDashboard = function () {
          });
       }
 
+      let service_counts = {};
+      let suppressed_service_count = 0;
+
       if (data['services'] !== undefined) {
          // Remove old alerts
          let current_alerts = servicealertlist.find("li");
@@ -222,10 +237,16 @@ window.nagiosDashboard = function () {
          // Add new alerts
          $.each(data['services'], function(host, services) {
             let host_match = hostalertlist.find("[data-host='" + host + "']");
-            if (self.config["hide_services_on_down_hosts"] && host_match.length > 0) {
-               return;
-            }
             $.each(services, function(service, details) {
+               if (service_counts[details['status']] === undefined) {
+                  service_counts[details['status']] = 1;
+               } else {
+                  service_counts[details['status']]++;
+               }
+               if (self.config["hide_services_on_down_hosts"] && host_match.length > 0) {
+                  suppressed_service_count++;
+                  return;
+               }
                if (details === undefined) {
                   // Bad alert
                   return true;
@@ -260,6 +281,20 @@ window.nagiosDashboard = function () {
             });
          });
       }
+
+      // Update counters
+      $('#host-count').html("<span class='badge-critical'>" + host_count + " Down</span>");
+      let service_count_badges = "";
+      if (service_counts[SERVICE_WARNING] !== undefined) {
+         service_count_badges += "<span class='badge-warning'>" + service_counts[SERVICE_WARNING] + " Warning</span>";
+      }
+      if (service_counts[SERVICE_CRITICAL] !== undefined) {
+         service_count_badges += "<span class='badge-critical'>" + service_counts[SERVICE_CRITICAL] + " Critical</span>";
+      }
+      if (suppressed_service_count > 0) {
+         service_count_badges += "<span class='badge-critical'>" + suppressed_service_count + " Suppressed</span>";
+      }
+      $('#service-count').html(service_count_badges);
    };
 
    const updateChart = function(chart_data) {
@@ -313,6 +348,59 @@ window.nagiosDashboard = function () {
 
       statetype = statetype + ' no-bg';
 
+      // Show quiet for if needed
+      if (self.latest_event_timestamp > 0) {
+         if (event['timestamp'] > self.latest_event_timestamp && (event['timestamp'] - self.latest_event_timestamp > (5 * 60 * 1000))) {
+            let time_since_last = (event['timestamp'] - self.latest_event_timestamp) / 1000;
+            let quite_style = 'no-bg quietfor-';
+            if (time_since_last >= 8 * 60 * 60) {
+               quite_style += 'ok';
+            } else if (time_since_last >= 4 * 60 * 60) {
+               quite_style += 'warn';
+            } else {
+               quite_style += 'critical';
+            }
+
+            const days = Math.floor(time_since_last / 86400);
+            time_since_last -= days * 86400;
+            const hours = Math.floor(time_since_last / 3600) % 24;
+            time_since_last -= hours * 3600;
+            const minutes = Math.floor(time_since_last / 60) % 60;
+            time_since_last -= minutes * 60;
+            const seconds = parseInt((time_since_last % 60).toFixed(0), 10);
+
+            let time_since_last_str = '';
+            if (days === 1) {
+               time_since_last_str += days + ' Day ';
+            }
+            if (days > 1) {
+               time_since_last_str += days + ' Days ';
+            }
+            if (hours === 1) {
+               time_since_last_str += hours + ' Hour ';
+            }
+            if (hours > 1) {
+               time_since_last_str += hours + ' Hours ';
+            }
+            if (minutes === 1) {
+               time_since_last_str += minutes + ' Minute ';
+            }
+            if (minutes > 1) {
+               time_since_last_str += minutes + ' Minutes ';
+            }
+            if (days === 0 && hours === 0 && minutes === 0) {
+               if (seconds === 1) {
+                  time_since_last_str += seconds + ' Second';
+               } else {
+                  time_since_last_str += seconds + ' Seconds';
+               }
+            }
+            time_since_last_str = time_since_last_str.trim();
+            $("<li class='neutral'><h4 class='" + quite_style + "'>Quiet for " + time_since_last_str + "</h4></li>").prependTo(eventlist);
+         }
+      }
+
+      // Build/display event
       let event_entry = "<li class='neutral'>";
       let right_info = '';
       if (event['state_type'] === STATE_SOFT) {
@@ -421,15 +509,21 @@ window.nagiosDashboard = function () {
             scales: {
                xAxes: [{
                   labels: [],
-                  stacked: true,
-                  ticks: {
-                     min: 0
-                  }
+                  stacked: true
                }],
                yAxes: [{
                   stacked: true
                }]
             }
+         }
+      });
+   };
+
+   var registerEventHandlers = function() {
+      $('body').on('keyup', function(e) {
+         if (e.code === 'KeyC') {
+            e.preventDefault();
+            // Open config settings
          }
       });
    };
@@ -454,11 +548,12 @@ window.nagiosDashboard = function () {
             self.dashboard.append("<audio id='alert-player'></audio>");
             self.dashboard.append("<h3 id='last_refresh'></h3>");
             let activealerts = $("<div id='active_alerts'></div>").appendTo(self.dashboard);
-            activealerts.append("<div id='host_alerts'><h3>Host Alerts</h3><ul></ul></div>");
-            activealerts.append("<div id='service_alerts'><h3>Service Alerts</h3><ul></ul></div>");
+            activealerts.append("<div id='host_alerts'><h3>Host Alerts<span id='host-count'></span></h3><ul></ul></div>");
+            activealerts.append("<div id='service_alerts'><h3>Service Alerts<span id='service-count'></span></h3><ul></ul></div>");
             self.dashboard.append("<h3>Historical</h3><canvas id='historical-chart'></canvas>");
             self.dashboard.append("<div id='historical_event_list'><ul></ul></div>");
 
+            registerEventHandlers();
             initChart();
             self.refreshDashboard();
 

@@ -185,6 +185,9 @@ class NagiosServer {
                 foreach ($used_values as $value) {
                     $alerts[$host][$value] = $details[$value];
                 }
+                $alerts[$host]['last_check'] = Toolbox::formatNagiosTimestamp($details['last_check']);
+                $alerts[$host]['last_time_ok'] = Toolbox::formatNagiosTimestamp($details['last_time_ok']);
+                $alerts[$host]['next_check'] = Toolbox::formatNagiosTimestamp($details['next_check']);
             }
         }
 
